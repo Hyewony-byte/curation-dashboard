@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lotte Mart ZETTA - 스마트센터 메인 전시 관제</title>
+  <title>Lotte Mart ZETTA - 메인 캐러셀별 실시간 매출 관제</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -18,342 +18,301 @@
     const { useState, useEffect, useMemo } = React;
     const { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } = Recharts;
 
-    // 스마트센터 메인(ch_no=100050) 전시 구좌 편성 상품 리스트
-    const INITIAL_DISPLAY_PRODUCTS = [
+    // 실제 메인 캡처 화면 기반 캐러셀 및 상품 메타데이터
+    const CAROUSEL_SECTIONS = [
       {
-        id: 'ZT_CFC_01',
-        slot: 'MAIN_HERO_01',
-        slotName: '메인 상단 히어로',
-        name: '[CFC 직송] 1+등급 한우 꽃등심 500g (냉장)',
-        basePrice: 58900,
-        stock: 7, // 품절 임박 경보
-        sales5m: 3840000,
-        growth: 18.2,
-        color: '#ef4444'
+        id: 'SEC_CHUSEOK_FOOD',
+        title: '한가위 상차림, 꼼꼼하게 준비해요',
+        desc: '명절 신선/정육/제수용품 가로 캐러셀',
+        badge: '시즌 기획전',
+        products: [
+          { id: 'F01', name: '[제] 호주산 곡물비육 찜갈비용 (1000g)', price: 32280, base5m: 1850000, color: '#ef4444' },
+          { id: 'F02', name: '꼬치없이 부쳐낸 오미산적 (450g)', price: 10360, base5m: 940000, color: '#f97316' },
+          { id: 'F03', name: '제수용 사과(특) (3입/팩)', price: 14900, base5m: 1420000, color: '#eab308' },
+          { id: 'F04', name: '[사전예약] 모둠전 세트 (냉장)', price: 23850, base5m: 760000, color: '#22c55e' },
+          { id: 'F05', name: '[사전예약] 모둠 삼색나물 (270g)', price: 8550, base5m: 520000, color: '#06b6d4' },
+        ]
       },
       {
-        id: 'ZT_CFC_02',
-        slot: 'TIME_DEAL_01',
-        slotName: '오늘의 타임특가',
-        name: '[스마트특가] 고당도 프리미엄 샤인머스캣 1.5kg',
-        basePrice: 19900,
-        stock: 5, // 품절 임박 경보
-        sales5m: 2980000,
-        growth: 24.5,
-        color: '#f59e0b'
+        id: 'SEC_CHUSEOK_GIFT',
+        title: '감사의 마음을 가득 담은 한가위 선물세트',
+        desc: '프리미엄 한우/가공/과일 선물세트 캐러셀',
+        badge: '고단가 선물세트',
+        products: [
+          { id: 'G01', name: '[남도화우] 한우 1등급 실속 정육세트', price: 99000, base5m: 3960000, color: '#ef4444' },
+          { id: 'G02', name: '[남도화우] 한우 1등급 등심 정육세트', price: 159000, base5m: 4770000, color: '#8b5cf6' },
+          { id: 'G03', name: '[명절선물세트] CJ 스팸복합 S호', price: 39900, base5m: 1990000, color: '#f59e0b' },
+          { id: 'G04', name: '[명절선물세트] 충주사과 천안배 (혼합)', price: 69900, base5m: 2100000, color: '#10b981' },
+          { id: 'G05', name: '[명절선물세트] 동원 튜나리챔 S호', price: 59280, base5m: 1180000, color: '#3b82f6' },
+        ]
       },
       {
-        id: 'ZT_CFC_03',
-        slot: 'FRESH_DIRECT_01',
-        slotName: '새벽산지직송전',
-        name: '완도 활전복 1kg (11-12미/산소포장)',
-        basePrice: 34900,
-        stock: 28,
-        sales5m: 1650000,
-        growth: -4.1,
-        color: '#3b82f6'
-      },
-      {
-        id: 'ZT_CFC_04',
-        slot: 'SMART_ONLY_01',
-        slotName: '제타 스마트 전용관',
-        name: '[밀키트] 프레시지 시그니처 스테이크 세트',
-        basePrice: 16800,
-        stock: 92,
-        sales5m: 1220000,
-        growth: 8.7,
-        color: '#10b981'
-      },
-      {
-        id: 'ZT_CFC_05',
-        slot: 'DAILY_BEST_01',
-        slotName: '생필품 쟁여두기',
-        name: '제주 삼다수 2L x 12병 (묶음배송)',
-        basePrice: 11800,
-        stock: 310,
-        sales5m: 980000,
-        growth: 2.3,
-        color: '#8b5cf6'
+        id: 'SEC_AD_SNACK',
+        title: '광고 | 좋아하면 맛, 새로 만나는 재미',
+        desc: '제과/간식/프로모션 제휴 스폰서 캐러셀',
+        badge: '광고/신상품',
+        products: [
+          { id: 'A01', name: '해태 샌드에이스 크림라떼맛 (204g)', price: 4190, base5m: 380000, color: '#ec4899' },
+          { id: 'A02', name: '해태 미니자유시간 로얄밀크티 (300g)', price: 8990, base5m: 450000, color: '#6366f1' },
+          { id: 'A03', name: '해태 버터링 에스프레소 버터 (194g)', price: 5590, base5m: 290000, color: '#14b8a6' },
+          { id: 'A04', name: '해태 후렌치파이 딸기 (192g)', price: 3590, base5m: 360000, color: '#f43f5e' },
+          { id: 'A05', name: '해태 맛동산 벨기에화이트초코 (204g)', price: 3590, base5m: 310000, color: '#a855f7' },
+        ]
       }
     ];
 
     function App() {
-      const [products, setProducts] = useState(INITIAL_DISPLAY_PRODUCTS);
-      const [filterSlot, setFilterSlot] = useState('ALL');
-      const [currentTime, setCurrentTime] = useState('10:35:00');
-      const [chartHistory, setChartHistory] = useState([
-        { time: '10:20', hanwoo: 210, shine: 150, abalone: 90 },
-        { time: '10:25', hanwoo: 260, shine: 190, abalone: 110 },
-        { time: '10:30', hanwoo: 320, shine: 240, abalone: 140 },
-        { time: '10:35', hanwoo: 384, shine: 298, abalone: 165 },
-      ]);
+      const [selectedSectionId, setSelectedSectionId] = useState(CAROUSEL_SECTIONS[0].id);
+      const [sectionData, setSectionData] = useState(CAROUSEL_SECTIONS);
+      const [currentTime, setCurrentTime] = useState('10:40:00');
 
-      // 실시간 SSE 스트리밍 시뮬레이션 (3초 단위)
+      // 3초마다 캐러셀 내 개별 상품들의 실시간 주문 이벤트 시뮬레이션
       useEffect(() => {
         const interval = setInterval(() => {
           const now = new Date();
-          const t = now.toTimeString().split(' ')[0];
-          setCurrentTime(t);
+          setCurrentTime(now.toTimeString().split(' ')[0]);
 
-          // 5분 윈도우 매출 및 센터 재고 변동
-          setProducts(prev =>
-            prev.map(item => {
-              const orderInc = Math.floor(Math.random() * 4); // 신규 주문량
-              const deltaSales = orderInc * item.basePrice;
-              const newStock = Math.max(0, item.stock - (Math.random() > 0.6 ? 1 : 0));
-              const deltaGrowth = (Math.random() - 0.45) * 2;
-
-              return {
-                ...item,
-                sales5m: item.sales5m + deltaSales,
-                stock: newStock,
-                growth: parseFloat((item.growth + deltaGrowth).toFixed(1))
-              };
-            })
+          setSectionData(prevSections =>
+            prevSections.map(sec => ({
+              ...sec,
+              products: sec.products.map(p => {
+                const orderCount = Math.floor(Math.random() * 3); // 무작위 주문 발생
+                const delta = orderCount * p.price;
+                return {
+                  ...p,
+                  base5m: Math.max(100000, p.base5m + (Math.random() > 0.4 ? delta : -Math.floor(delta * 0.3)))
+                };
+              })
+            }))
           );
-
-          // 차트 데이터 추가
-          setChartHistory(prev => {
-            const last = prev[prev.length - 1];
-            return [
-              ...prev.slice(1),
-              {
-                time: t.substring(0, 5),
-                hanwoo: Math.min(550, last.hanwoo + Math.floor((Math.random() - 0.3) * 20)),
-                shine: Math.min(450, last.shine + Math.floor((Math.random() - 0.3) * 15)),
-                abalone: Math.min(300, last.abalone + Math.floor((Math.random() - 0.4) * 10)),
-              }
-            ];
-          });
         }, 3000);
 
         return () => clearInterval(interval);
       }, []);
 
-      // 상단 KPI 계산
-      const summary = useMemo(() => {
-        const totalSales5m = products.reduce((sum, p) => sum + p.sales5m, 0);
-        const lowStockItems = products.filter(p => p.stock < 10);
-        return {
-          totalSales5m,
-          lowStockItems,
-          orderPacing: Math.floor(totalSales5m / 54000) // 추정 분당 처리 건수
-        };
-      }, [products]);
+      // 현재 선택된 캐러셀 영역 데이터
+      const currentSection = useMemo(() => {
+        return sectionData.find(s => s.id === selectedSectionId) || sectionData[0];
+      }, [sectionData, selectedSectionId]);
 
-      const filteredList = filterSlot === 'ALL' 
-        ? products 
-        : products.filter(p => p.slot.includes(filterSlot));
+      // 현재 캐러셀의 5분 총매출 및 최고 기여 상품
+      const sectionSummary = useMemo(() => {
+        const total = currentSection.products.reduce((acc, p) => acc + p.base5m, 0);
+        const sorted = [...currentSection.products].sort((a, b) => b.base5m - a.base5m);
+        return {
+          totalSales5m: total,
+          topProduct: sorted[0],
+          itemCount: currentSection.products.length
+        };
+      }, [currentSection]);
+
+      // 시계열 추이 모의 데이터 (현재 캐러셀 상품 기준)
+      const chartPoints = useMemo(() => {
+        const p = currentSection.products;
+        return [
+          { time: '10:25', p0: p[0]?.base5m * 0.85, p1: p[1]?.base5m * 0.88, p2: p[2]?.base5m * 0.90 },
+          { time: '10:30', p0: p[0]?.base5m * 0.92, p1: p[1]?.base5m * 0.95, p2: p[2]?.base5m * 0.93 },
+          { time: '10:35', p0: p[0]?.base5m * 0.97, p1: p[1]?.base5m * 0.94, p2: p[2]?.base5m * 0.98 },
+          { time: '10:40', p0: p[0]?.base5m, p1: p[1]?.base5m, p2: p[2]?.base5m },
+        ];
+      }, [currentSection]);
 
       return (
-        <div className="p-6 font-sans select-none max-w-7xl mx-auto">
-          {/* 1. 채널 메타 헤더 */}
-          <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-800">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-rose-600 to-red-500 flex items-center justify-center font-black text-xl shadow-lg shadow-rose-900/30">
-                Z
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold tracking-tight">LOTTE MART ZETTA</h1>
-                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-800">
-                    스마트센터(CFC) LIVE
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
-                  <span>채널코드: <code className="text-slate-300">100050</code> (dtl: 1000287)</span>
-                  <span>•</span>
-                  <span className="text-rose-400">자동화 풀필먼트 권역 실시간 라우팅</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="text-slate-300">SSE 스트림 정상</span>
-                <span className="text-slate-500 pl-2 border-l border-slate-800">오전 {currentTime}</span>
-              </div>
-              <a
-                href="https://lottemartzetta.com/?ch_no=100050&ch_dtl_no=1000287"
-                target="_blank"
-                rel="noreferrer"
-                className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors border border-slate-700 flex items-center gap-1.5"
-              >
-                실제 메인 화면 확인 ↗
-              </a>
-            </div>
-          </div>
-
-          {/* 2. 상단 관제 KPI 요약 카드 */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 my-6">
-            <div className="p-5 rounded-2xl bg-[#0e1422] border border-slate-800/80">
-              <div className="text-xs text-slate-400 flex justify-between">
-                <span>메인 전시 5분 매출</span>
-                <span className="text-emerald-400 font-bold">+16.4%</span>
-              </div>
-              <div className="mt-2 text-2xl font-black text-white">
-                ₩ {summary.totalSales5m.toLocaleString()}
-              </div>
-              <div className="mt-2 text-[11px] text-slate-400">
-                전시 상위 5개 구좌 합산
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-[#0e1422] border border-slate-800/80">
-              <div className="text-xs text-slate-400 flex justify-between">
-                <span>스마트센터 피킹 속도</span>
-                <span className="text-cyan-400">오카도 그리드 정상</span>
-              </div>
-              <div className="mt-2 text-2xl font-black text-cyan-300">
-                {summary.orderPacing} <span className="text-xs font-normal text-slate-400">주문 / 분</span>
-              </div>
-              <div className="mt-2 text-[11px] text-slate-400">
-                출고 지연율: <strong className="text-slate-200">0.02%</strong>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-[#0e1422] border border-slate-800/80">
-              <div className="text-xs text-slate-400 flex justify-between">
-                <span>오늘의 메인 전환율</span>
-                <span className="text-amber-400">목표 상회</span>
-              </div>
-              <div className="mt-2 text-2xl font-black text-white">
-                14.2%
-              </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
-                <div className="bg-gradient-to-r from-rose-500 to-amber-400 h-full w-[88%]"></div>
-              </div>
-            </div>
-
-            <div className="p-5 rounded-2xl bg-[#170e14] border border-rose-900/50">
-              <div className="text-xs text-rose-300 flex justify-between">
-                <span>전시 상품 센터 재고 위험</span>
-                <span className="text-[10px] bg-rose-900/80 text-rose-200 px-2 py-0.5 rounded-full border border-rose-700">
-                  10개 미만
+        <div className="p-6 font-sans max-w-7xl mx-auto select-none">
+          {/* 1. 상단 글로벌 헤더 */}
+          <div className="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-slate-800">
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold tracking-tight text-white">LOTTE MART ZETTA</h1>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-800">
+                  캐러셀 구좌별 관제
                 </span>
               </div>
-              <div className="mt-2 text-2xl font-black text-rose-400">
-                {summary.lowStockItems.length} <span className="text-xs font-normal">개 구좌 품절 위험</span>
+              <p className="text-xs text-slate-400 mt-1">
+                메인 홈 테마 캐러셀 단위 실시간 매출 & 노출 슬롯 반응 분석
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-slate-300 font-mono">{currentTime}</span>
+              <span className="text-slate-500 pl-2 border-l border-slate-800">5분 텀블링 윈도우</span>
+            </div>
+          </div>
+
+          {/* 2. 캐러셀 구좌 탭 셀렉터 */}
+          <div className="my-6">
+            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">
+              모니터링할 캐러셀 영역 선택
+            </label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {sectionData.map((sec) => {
+                const isSelected = sec.id === selectedSectionId;
+                const secTotal = sec.products.reduce((a, b) => a + b.base5m, 0);
+                return (
+                  <button
+                    key={sec.id}
+                    onClick={() => setSelectedSectionId(sec.id)}
+                    className={`p-4 rounded-2xl text-left border transition-all ${
+                      isSelected
+                        ? 'bg-[#131b2e] border-rose-500/80 shadow-lg shadow-rose-950/30 ring-1 ring-rose-500/40'
+                        : 'bg-[#0e1422] border-slate-800/80 hover:border-slate-700 hover:bg-[#11192b]'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center text-xs">
+                      <span className={`font-bold px-2 py-0.5 rounded ${
+                        isSelected ? 'bg-rose-600 text-white' : 'bg-slate-800 text-slate-400'
+                      }`}>
+                        {sec.badge}
+                      </span>
+                      <span className="text-rose-400 font-bold font-mono">
+                        ₩ {secTotal.toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="font-bold text-sm text-white mt-2.5 line-clamp-1">
+                      {sec.title}
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">
+                      전시 상품 {sec.products.length}개 실시간 추적 중
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. 선택된 캐러셀 영역 KPI 카드 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="p-5 rounded-2xl bg-[#0e1422] border border-slate-800/80">
+              <span className="text-xs text-slate-400">선택 캐러셀 5분 합산 매출</span>
+              <div className="mt-2 text-2xl font-black text-white font-mono">
+                ₩ {sectionSummary.totalSales5m.toLocaleString()}
               </div>
-              <div className="mt-2 text-[11px] text-rose-300/80 truncate">
-                {summary.lowStockItems.map(i => i.name.split(' ')[1]).join(', ') || '전 상품 재고 양호'}
+              <div className="mt-1.5 text-[11px] text-emerald-400">
+                ▲ 직전 주기 대비 +11.4% 활성화
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-[#0e1422] border border-slate-800/80">
+              <span className="text-xs text-slate-400">캐러셀 내 매출 1위 기여 상품</span>
+              <div className="mt-2 text-base font-bold text-white line-clamp-1">
+                {sectionSummary.topProduct?.name}
+              </div>
+              <div className="mt-1.5 text-[11px] text-rose-400 font-semibold font-mono">
+                ₩ {sectionSummary.topProduct?.base5m.toLocaleString()} (점유율 {Math.round((sectionSummary.topProduct?.base5m / sectionSummary.totalSales5m) * 100)}%)
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-[#0e1422] border border-slate-800/80">
+              <span className="text-xs text-slate-400">구좌 노출 효율성 (CTR/전환)</span>
+              <div className="mt-2 text-2xl font-black text-cyan-400 font-mono">
+                13.8%
+              </div>
+              <div className="mt-1.5 text-[11px] text-slate-400">
+                캐러셀 상품 스크롤 뷰 대비 장바구니 유입률
               </div>
             </div>
           </div>
 
-          {/* 3. 시계열 추이 차트 */}
+          {/* 4. 캐러셀 상위 3개 상품 시계열 추이 라인 차트 */}
           <div className="p-6 rounded-2xl bg-[#0e1422] border border-slate-800/80 mb-6">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
               <div>
-                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
                   <span className="w-2 h-4 bg-rose-500 rounded-full"></span>
-                  스마트센터 메인 상품 5분 윈도우 매출 흐름
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">상단 히어로 배너 및 타임특가 구좌 노출 상품 실시간 수렴</p>
+                  [{currentSection.badge}] 상위 품목 실시간 매출 곡선
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">최근 20분간 5분 분절 매출 추이</p>
               </div>
-              <div className="flex items-center gap-4 text-xs">
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> 한우 꽃등심</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> 샤인머스캣</span>
-                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> 완도 활전복</span>
+              <div className="flex flex-wrap items-center gap-4 text-xs">
+                {currentSection.products.slice(0, 3).map((p, idx) => (
+                  <span key={p.id} className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.color }}></span>
+                    <span className="text-slate-300 line-clamp-1 max-w-[140px]">{p.name.split(' ')[0]} {p.name.split(' ')[1]}</span>
+                  </span>
+                ))}
               </div>
             </div>
-            <div style={{ width: '100%', height: 260 }}>
+
+            <div style={{ width: '100%', height: 240 }}>
               <ResponsiveContainer>
-                <AreaChart data={chartHistory}>
-                  <defs>
-                    <linearGradient id="cRed" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.4}/><stop offset="95%" stopColor="#ef4444" stopOpacity={0}/></linearGradient>
-                    <linearGradient id="cAmb" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f59e0b" stopOpacity={0.35}/><stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/></linearGradient>
-                    <linearGradient id="cBlu" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
-                  </defs>
+                <AreaChart data={chartPoints}>
                   <XAxis dataKey="time" stroke="#475569" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#475569" fontSize={11} tickLine={false} tickFormatter={v => `₩${v}만`} domain={[0, 600]} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }} formatter={v => [`₩${(v*10000).toLocaleString()}`, '']} />
-                  <Area type="monotone" dataKey="hanwoo" stroke="#ef4444" strokeWidth={2} fill="url(#cRed)" />
-                  <Area type="monotone" dataKey="shine" stroke="#f59e0b" strokeWidth={2} fill="url(#cAmb)" />
-                  <Area type="monotone" dataKey="abalone" stroke="#3b82f6" strokeWidth={2} fill="url(#cBlu)" />
+                  <YAxis stroke="#475569" fontSize={11} tickLine={false} tickFormatter={v => `₩${Math.round(v/10000)}만`} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '8px', fontSize: '12px' }}
+                    formatter={v => [`₩${Math.round(v).toLocaleString()}`, '']}
+                  />
+                  <Area type="monotone" dataKey="p0" stroke={currentSection.products[0]?.color || '#ef4444'} fill={currentSection.products[0]?.color || '#ef4444'} fillOpacity={0.15} strokeWidth={2} />
+                  <Area type="monotone" dataKey="p1" stroke={currentSection.products[1]?.color || '#f59e0b'} fill={currentSection.products[1]?.color || '#f59e0b'} fillOpacity={0.15} strokeWidth={2} />
+                  <Area type="monotone" dataKey="p2" stroke={currentSection.products[2]?.color || '#3b82f6'} fill={currentSection.products[2]?.color || '#3b82f6'} fillOpacity={0.15} strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* 4. 메인 전시 구좌별 상품 랭킹 & 센터 재고 관리 테이블 */}
+          {/* 5. 선택된 캐러셀 내 상품별 매출 & 점유율 테이블 */}
           <div className="rounded-2xl bg-[#0e1422] border border-slate-800/80 overflow-hidden">
-            <div className="p-5 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-4">
+            <div className="p-4 border-b border-slate-800/80 flex justify-between items-center">
               <div>
-                <h3 className="text-base font-bold text-white">메인 전시 구좌별 상품 실시간 관제 현황</h3>
-                <p className="text-xs text-slate-400 mt-0.5">센터 잔여 재고 10개 미만 시 대체 편성 상품으로 즉시 교체 필요</p>
+                <h4 className="text-sm font-bold text-white">
+                  "{currentSection.title}" 노출 상품 상세 기여도
+                </h4>
+                <p className="text-xs text-slate-400 mt-0.5">캐러셀 내 슬롯 위치(순서)별 실시간 결제 성과</p>
               </div>
-
-              {/* 구좌 필터 버튼군 */}
-              <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
-                {['ALL', 'HERO', 'TIME_DEAL', 'FRESH'].map(key => (
-                  <button
-                    key={key}
-                    onClick={() => setFilterSlot(key)}
-                    className={`px-3 py-1 rounded-lg font-medium transition-all ${filterSlot === key ? 'bg-rose-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'}`}
-                  >
-                    {key === 'ALL' ? '전체 구좌' : key}
-                  </button>
-                ))}
-              </div>
+              <span className="text-xs text-slate-400 font-mono">
+                슬롯 수: {currentSection.products.length}개
+              </span>
             </div>
 
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-900/60 text-slate-400 border-b border-slate-800">
-                  <th className="py-3 px-4">전시 구좌</th>
-                  <th className="py-3 px-4">상품 정보</th>
-                  <th className="py-3 px-4 text-right">단가</th>
+                  <th className="py-3 px-4 w-16">슬롯</th>
+                  <th className="py-3 px-4">전시 상품명</th>
+                  <th className="py-3 px-4 text-right">판매 단가</th>
                   <th className="py-3 px-4 text-right">최근 5분 매출</th>
-                  <th className="py-3 px-4 text-right">신장률</th>
-                  <th className="py-3 px-4 text-center">CFC 잔여 재고</th>
-                  <th className="py-3 px-4 text-center">액션</th>
+                  <th className="py-3 px-4 text-right">구좌 내 점유율</th>
+                  <th className="py-3 px-4 text-center">전환 평가</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {filteredList.map((item) => {
-                  const isLowStock = item.stock < 10;
+                {currentSection.products.map((p, idx) => {
+                  const share = Math.round((p.base5m / sectionSummary.totalSales5m) * 100);
                   return (
-                    <tr key={item.id} className="hover:bg-slate-900/40 transition-colors">
-                      <td className="py-3.5 px-4 font-mono">
-                        <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                          {item.slot}
-                        </span>
-                        <div className="text-[11px] text-slate-400 mt-1">{item.slotName}</div>
+                    <tr key={p.id} className="hover:bg-slate-900/40 transition-colors">
+                      <td className="py-3 px-4 font-mono font-bold text-slate-400">
+                        #{idx + 1}
                       </td>
-                      <td className="py-3.5 px-4">
-                        <div className="font-semibold text-slate-200">{item.name}</div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">코드: {item.id}</div>
+                      <td className="py-3 px-4">
+                        <div className="font-semibold text-slate-200">{p.name}</div>
+                        <div className="text-[11px] text-slate-400 mt-0.5">코드: {p.id}</div>
                       </td>
-                      <td className="py-3.5 px-4 text-right text-slate-300">
-                        ₩ {item.basePrice.toLocaleString()}
+                      <td className="py-3 px-4 text-right font-mono text-slate-300">
+                        ₩ {p.price.toLocaleString()}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-bold text-rose-400">
-                        ₩ {item.sales5m.toLocaleString()}
+                      <td className="py-3 px-4 text-right font-bold text-rose-400 font-mono">
+                        ₩ {p.base5m.toLocaleString()}
                       </td>
-                      <td className="py-3.5 px-4 text-right font-semibold">
-                        <span className={item.growth >= 0 ? 'text-emerald-400' : 'text-rose-500'}>
-                          {item.growth >= 0 ? '▲ +' : '▼ '}{item.growth}%
-                        </span>
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="font-mono text-slate-300">{share}%</span>
+                          <div className="w-16 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-rose-500 h-full rounded-full" style={{ width: `${share}%` }}></div>
+                          </div>
+                        </div>
                       </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span className={`inline-block px-2.5 py-1 rounded-full font-bold text-xs ${
-                          isLowStock ? 'bg-rose-950 text-rose-400 border border-rose-800 animate-pulse' : 'bg-slate-800 text-slate-300'
-                        }`}>
-                          {item.stock}개 {isLowStock && '⚠️'}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        {isLowStock ? (
-                          <button
-                            onClick={() => alert(`[CMS 호출] ${item.name} 구좌의 대체 상품 풀을 불러옵니다.`)}
-                            className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium text-[11px] transition-all shadow"
-                          >
-                            구좌 대체
-                          </button>
+                      <td className="py-3 px-4 text-center">
+                        {share >= 25 ? (
+                          <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold">
+                            효자 상품
+                          </span>
+                        ) : share < 10 ? (
+                          <span className="px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800 text-[10px] font-bold">
+                            노출 교체 검토
+                          </span>
                         ) : (
-                          <span className="text-slate-400 text-[11px]">정상 노출</span>
+                          <span className="text-slate-400 text-[11px]">안정적</span>
                         )}
                       </td>
                     </tr>
