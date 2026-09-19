@@ -1,1 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LOTTE MART ZETTA - 실시간 전시 관제</title>
+  <!-- Tailwind CSS & React & Recharts CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/prop-types/prop-types.min.js"></script>
+  <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body class="bg-[#06090e] text-slate-100 min-h-screen">
+  <div id="root"></div>
 
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+    const { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } = Recharts;
+
+    const initialData = [
+      { time: '10:00', hanwoo: 210, shine: 140, abalone: 80 },
+      { time: '10:05', hanwoo: 240, shine: 150, abalone: 95 },
+      { time: '10:10', hanwoo: 290, shine: 180, abalone: 105 },
+      { time: '10:15', hanwoo: 370, shine: 230, abalone: 120 },
+      { time: '10:17', hanwoo: 460, shine: 310, abalone: 135 },
+    ];
+
+    function App() {
+      const [chartData, setChartData] = useState(initialData);
+      const [sales, setSales] = useState(14040000);
+      const [diff, setDiff] = useState(1420000);
+      const [growth, setGrowth] = useState(14.2);
+      const [opm, setOpm] = useState(173);
+      const [timeStr, setTimeStr] = useState('10:17:00');
+      const [unit, setUnit] = useState('5m');
+
+      // 실시간 시뮬레이션 타이머
+      useEffect(() => {
+        const timer = setInterval(() => {
+          const now = new Date();
+          setTimeStr(now.toTimeString().split(' ')[0]);
+          setSales(prev => prev + Math.floor((Math.random() - 0.2) * 150000));
+          setOpm(Math.floor(165 + Math.random() * 20));
+          
+          setChartData(prev => {
+            const last = prev[prev.length - 1];
+            return [...prev.slice(1), {
+              time: now.toTimeString().substring(0, 5),
+              hanwoo: Math.min(600, last.hanwoo + Math.floor((Math.random() - 0.3) * 20)),
+              shine: Math.min(450, last.shine + Math.floor((Math.random() - 0.3) * 15)),
+              abalone: Math.min(300, last.abalone + Math.floor((Math.random() - 0.3) * 10)),
+            }];
+          });
+        }, 3000);
+        return () => clearInterval(timer);
+      }, []);
+
+      const triggerSurge = () => {
+        setSales(prev => prev + 3500000);
+        setDiff(prev => prev + 1800000);
+        setGrowth(28.5);
+        setOpm(prev => prev + 80);
+      };
+
+      return (
+        <div className="p-6 font-sans">
+          {/* 헤더 */}
+          <div className="flex flex-wrap items-center justify-between gap-4 pb-6 border-b border-slate-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-red-500 flex items-center justify-center font-black text-xl shadow-lg">Z</div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold">LOTTE MART ZETTA</h1>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-950 text-rose-400 border border-rose-800">OPS LIVE</span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">메인 전시 상품 실시간 매출 트래킹 & 자동 편성 관제</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>SSE 정상 수신</span>
+                <span className="text-slate-500 pl-2 border-l border-slate-800">오전 {timeStr}</span>
+              </div>
+              <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
+                {['1m', '5m', '15m', '1h'].map(u => (
+                  <button key={u} onClick={() => setUnit(u)} className={`px-3 py-1 rounded ${unit === u ? 'bg-rose-600 text-white' : 'text-slate-400'}`}>{u}</button>
+                ))}
+              </div>
+              <button onClick={triggerSurge} className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-md">
+                ⚡ Surge 테스트
+              </button>
+            </div>
+          </div>
+
+          {/* KPI 카드 */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 my-6">
+            <div className="p-5 rounded-2xl bg-[#0d131f] border border-slate-800">
+              <div className="flex justify-between text-xs text-slate-400">
+                <span>최근 {unit.toUpperCase()} 합산 매출</span>
+                <span className="text-emerald-400 font-bold">+{growth}%</span>
+              </div>
+              <div className="mt-2 text-2xl font-black">₩ {sales.toLocaleString()}</div>
+              <div className="mt-2 text-[11px] text-slate-400 flex justify-between">
+                <span>직전 {unit} 대비: +₩{diff.toLocaleString()}</span>
+                <span className="text-rose-400">전시 6개 구좌</span>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-[#0d131f] border border-slate-800">
+              <div className="flex justify-between text-xs text-slate-400">
+                <span>당일 누적 메인 매출</span>
+                <span>목표 87% 달성</span>
+              </div>
+              <div className="mt-2 text-2xl font-black">₩ 1.57억</div>
+              <div className="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                <div className="bg-gradient-to-r from-rose-500 to-amber-400 h-full w-[87%]"></div>
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-[#0d131f] border border-slate-800">
+              <div className="flex justify-between text-xs text-slate-400">
+                <span>분당 유효 주문 (OPM)</span>
+                <span className="text-cyan-400">초당 ~2.9건</span>
+              </div>
+              <div className="mt-2 text-2xl font-black">{opm} <span className="text-xs font-normal text-slate-400">주문 / 분</span></div>
+              <div className="mt-2 text-[11px] text-slate-400">장바구니 전환율: 12.8%</div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-[#130d14] border border-rose-950">
+              <div className="flex justify-between text-xs text-rose-300">
+                <span>전시 재고 위험 감지</span>
+                <span className="text-[10px] bg-rose-900 px-1.5 py-0.5 rounded">10개 미만</span>
+              </div>
+              <div className="mt-2 text-2xl font-black text-rose-400">2 <span className="text-xs font-normal">개 품절 임박</span></div>
+              <div className="mt-2 text-[11px] text-rose-300/80">한우 등심(6), 샤인머스캣(8)</div>
+            </div>
+          </div>
+
+          {/* 차트 */}
+          <div className="p-6 rounded-2xl bg-[#0d131f] border border-slate-800">
+            <h2 className="text-base font-bold mb-4">전시 상품별 실시간 매출 윈도우 추이</h2>
+            <div style={{ width: '100%', height: 280 }}>
+              <ResponsiveContainer>
+                <AreaChart data={chartData}>
+                  <defs>
+                    <linearGradient id="cRed" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#ef4444" stopOpacity={0.4}/><stop offset="95%" stopColor="#ef4444" stopOpacity={0}/></linearGradient>
+                    <linearGradient id="cAmber" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3}/><stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/></linearGradient>
+                    <linearGradient id="cBlue" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/><stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/></linearGradient>
+                  </defs>
+                  <XAxis dataKey="time" stroke="#475569" fontSize={11} />
+                  <YAxis stroke="#475569" fontSize={11} tickFormatter={v => `₩${v}만`} domain={[0, 600]} />
+                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155' }} formatter={v => [`₩${(v*10000).toLocaleString()}`, '']} />
+                  <Area type="monotone" dataKey="hanwoo" stroke="#ef4444" fill="url(#cRed)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="shine" stroke="#f59e0b" fill="url(#cAmber)" strokeWidth={2} />
+                  <Area type="monotone" dataKey="abalone" stroke="#3b82f6" fill="url(#cBlue)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
