@@ -3,14 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lotte Mart ZETTA - 캐러셀별 실시간 매출 관제 (Light UI)</title>
+  <title>Lotte Mart ZETTA - 백오피스 엑셀 실데이터 연동 대시보드</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- 엑셀 파싱용 라이브러리 -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen p-6 font-sans">
   <div class="max-w-7xl mx-auto select-none">
     
-    <!-- 1. 헤더 영역 -->
+    <!-- 1. 헤더 & 엑셀 업로더 -->
     <div class="flex flex-wrap items-center justify-between gap-4 pb-5 border-b border-slate-200">
       <div class="flex items-center gap-3">
         <div class="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center font-black text-white text-xl shadow-md shadow-red-500/20">
@@ -19,19 +21,24 @@
         <div>
           <div class="flex items-center gap-2">
             <h1 class="text-xl font-bold text-slate-900 tracking-tight">LOTTE MART ZETTA</h1>
-            <span className="text-[10px]" style="font-size: 11px;" class="font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200">
-              캐러셀 구좌별 관제 (Demo)
+            <span id="data-status-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200">
+              시뮬레이션 모드
             </span>
           </div>
-          <p class="text-xs text-slate-500 mt-0.5">메인 홈 테마 캐러셀 단위 실시간 매출 & 슬롯 반응 분석 (현재: 시뮬레이션 가상 데이터)</p>
+          <p class="text-xs text-slate-500 mt-0.5">백오피스(BO) "상품별주문매출현황" 엑셀 데이터 매핑 관제</p>
         </div>
       </div>
 
+      <!-- 엑셀 파일 업로드 버튼 -->
       <div class="flex items-center gap-3">
-        <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white border border-slate-200 shadow-sm text-xs">
+        <label class="cursor-pointer flex items-center gap-2 px-3.5 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-sm transition-all">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+          <span>BO 매출 엑셀 업로드 (.xlsx)</span>
+          <input type="file" id="excel-input" accept=".xlsx, .xls" class="hidden" />
+        </label>
+        <div class="flex items-center gap-2 px-3 py-2 rounded-xl bg-white border border-slate-200 shadow-sm text-xs font-mono">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span id="timer-display" class="text-slate-700 font-mono font-medium">10:45:00</span>
-          <span class="text-slate-400 pl-2 border-l border-slate-200">5분 텀블링 윈도우</span>
+          <span id="target-date">2026-09-18</span>
         </div>
       </div>
     </div>
@@ -45,23 +52,29 @@
     </div>
 
     <!-- 3. KPI 카드 그리드 -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
       <div class="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
-        <span class="text-xs font-medium text-slate-500">선택 캐러셀 5분 합산 매출</span>
-        <div id="kpi-total" class="mt-2 text-2xl font-black text-slate-900 font-mono">₩ 0</div>
-        <div class="mt-1.5 text-xs text-emerald-600 font-medium">▲ 직전 주기 대비 +11.4% 활성화</div>
+        <span class="text-xs font-medium text-slate-500">선택 구좌 총주문금액</span>
+        <div id="kpi-order-amount" class="mt-2 text-2xl font-black text-slate-900 font-mono">₩ 0</div>
+        <div class="mt-1.5 text-xs text-slate-500">주문 접수 합산</div>
+      </div>
+
+      <div class="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
+        <span class="text-xs font-medium text-slate-500">선택 구좌 실매출액 (총매출)</span>
+        <div id="kpi-sales-amount" class="mt-2 text-2xl font-black text-red-600 font-mono">₩ 0</div>
+        <div id="kpi-sales-qty" class="mt-1.5 text-xs text-slate-500">매출 수량: 0개</div>
       </div>
 
       <div class="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
         <span class="text-xs font-medium text-slate-500">구좌 내 1위 기여 상품</span>
-        <div id="kpi-top" class="mt-2 text-base font-bold text-slate-900 truncate">-</div>
-        <div id="kpi-top-detail" class="mt-1.5 text-xs text-red-600 font-semibold font-mono">-</div>
+        <div id="kpi-top-name" class="mt-2 text-base font-bold text-slate-900 truncate">-</div>
+        <div id="kpi-top-desc" class="mt-1.5 text-xs text-red-600 font-semibold font-mono">-</div>
       </div>
 
       <div class="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-sm">
-        <span class="text-xs font-medium text-slate-500">구좌 노출 효율성 (전환율)</span>
-        <div class="mt-2 text-2xl font-black text-blue-600 font-mono">13.8%</div>
-        <div class="mt-1.5 text-xs text-slate-500">스크롤 노출 대비 장바구니 담기 전환율</div>
+        <span class="text-xs font-medium text-slate-500">취소 및 할인 방어율</span>
+        <div id="kpi-net-rate" class="mt-2 text-2xl font-black text-emerald-600 font-mono">0%</div>
+        <div class="mt-1.5 text-xs text-slate-500">총매출 대비 순매출 비중</div>
       </div>
     </div>
 
@@ -69,8 +82,8 @@
     <div class="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm mb-6">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <h3 class="text-base font-bold text-slate-900">상위 품목 실시간 시계열 매출 곡선</h3>
-          <p class="text-xs text-slate-500 mt-0.5">최근 20분간 5분 단위 분절 매출 흐름</p>
+          <h3 class="text-base font-bold text-slate-900">구좌 내 상품별 매출 비교 분석</h3>
+          <p class="text-xs text-slate-500 mt-0.5">실데이터 기반 상품별 총주문금액 vs 실제 총매출액</p>
         </div>
       </div>
       <div class="h-64 relative">
@@ -83,9 +96,8 @@
       <div class="p-4 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
         <div>
           <h4 id="table-title" class="text-sm font-bold text-slate-900">캐러셀 노출 상품 기여도</h4>
-          <p class="text-xs text-slate-500 mt-0.5">캐러셀 내 슬롯 위치(순서)별 실시간 결제 성과</p>
+          <p class="text-xs text-slate-500 mt-0.5">백오피스 주문/매출 필드 직접 대조 매핑</p>
         </div>
-        <span class="text-xs px-2.5 py-1 rounded-md bg-slate-200/70 text-slate-700 font-medium">슬롯 5개 편성</span>
       </div>
 
       <div class="overflow-x-auto">
@@ -93,11 +105,12 @@
           <thead>
             <tr class="bg-slate-100/80 text-slate-600 border-b border-slate-200 font-semibold">
               <th class="py-3 px-4 w-16">슬롯</th>
-              <th class="py-3 px-4">전시 상품명</th>
-              <th class="py-3 px-4 text-right">판매 단가</th>
-              <th class="py-3 px-4 text-right">최근 5분 매출</th>
-              <th class="py-3 px-4 text-right">구좌 내 점유율</th>
-              <th class="py-3 px-4 text-center">전환 평가</th>
+              <th class="py-3 px-4">상품 정보</th>
+              <th class="py-3 px-4 text-right">주문금액</th>
+              <th class="py-3 px-4 text-right">주문수량</th>
+              <th class="py-3 px-4 text-right">총매출액</th>
+              <th class="py-3 px-4 text-right">순매출액</th>
+              <th class="py-3 px-4 text-center">취소건수</th>
             </tr>
           </thead>
           <tbody id="table-body" class="divide-y divide-slate-100"></tbody>
@@ -108,17 +121,34 @@
   </div>
 
   <script>
-    const SECTIONS = [
+    // 메인 캐러셀 상품 풀 (업로드한 엑셀에 있던 실제 동원 딤섬 완탕 상품 매핑 포함)
+    let SECTIONS = [
+      {
+        id: 'SEC_HMR_DISH',
+        title: '냉동식품 / 간편 딤섬 & 완탕 특가',
+        badge: 'BO 실데이터 매핑',
+        products: [
+          {
+            ospCode: 'OS8801047317395',
+            code: '1003008977',
+            name: '동원 딤섬 사천우육완탕 (336G)',
+            orderAmount: 207680,
+            orderQty: 16,
+            totalSales: 246620,
+            netSales: 112100,
+            cancelQty: 0,
+            color: '#dc2626'
+          }
+        ]
+      },
       {
         id: 'SEC_CHUSEOK_FOOD',
         title: '한가위 상차림, 꼼꼼하게 준비해요',
         badge: '시즌 기획전',
         products: [
-          { id: 'F01', name: '[제] 호주산 곡물비육 찜갈비용 (1000g)', price: 32280, sales5m: 2079188, color: '#dc2626' },
-          { id: 'F02', name: '꼬치없이 부쳐낸 오미산적 (450g)', price: 10360, sales5m: 1090220, color: '#ea580c' },
-          { id: 'F03', name: '제수용 사과(특) (3입/팩)', price: 14900, sales5m: 1569000, color: '#ca8a04' },
-          { id: 'F04', name: '[사전예약] 모둠전 세트 (냉장)', price: 23850, sales5m: 938875, color: '#16a34a' },
-          { id: 'F05', name: '[사전예약] 모둠 삼색나물 (270g)', price: 8550, sales5m: 535390, color: '#0891b2' },
+          { ospCode: 'OS001', code: 'P01', name: '[제] 호주산 곡물비육 찜갈비용 (1000g)', orderAmount: 2150000, orderQty: 66, totalSales: 2079188, netSales: 1850000, cancelQty: 2, color: '#dc2626' },
+          { ospCode: 'OS002', code: 'P02', name: '꼬치없이 부쳐낸 오미산적 (450g)', orderAmount: 1120000, orderQty: 108, totalSales: 1090220, netSales: 980000, cancelQty: 1, color: '#ea580c' },
+          { ospCode: 'OS003', code: 'P03', name: '제수용 사과(특) (3입/팩)', orderAmount: 1590000, orderQty: 106, totalSales: 1569000, netSales: 1420000, cancelQty: 0, color: '#ca8a04' }
         ]
       },
       {
@@ -126,23 +156,8 @@
         title: '감사의 마음을 가득 담은 한가위 선물세트',
         badge: '고단가 세트',
         products: [
-          { id: 'G01', name: '[남도화우] 한우 1등급 실속 정육세트', price: 99000, sales5m: 3960000, color: '#dc2626' },
-          { id: 'G02', name: '[남도화우] 한우 1등급 등심 정육세트', price: 159000, sales5m: 4770000, color: '#7c3aed' },
-          { id: 'G03', name: '[명절선물세트] CJ 스팸복합 S호', price: 39900, sales5m: 1990000, color: '#d97706' },
-          { id: 'G04', name: '[명절선물세트] 충주사과 천안배 (혼합)', price: 69900, sales5m: 2100000, color: '#059669' },
-          { id: 'G05', name: '[명절선물세트] 동원 튜나리챔 S호', price: 59280, sales5m: 1180000, color: '#2563eb' },
-        ]
-      },
-      {
-        id: 'SEC_AD_SNACK',
-        title: '광고 | 좋아하면 맛, 새로 만나는 재미',
-        badge: '광고/신상품',
-        products: [
-          { id: 'A01', name: '해태 샌드에이스 크림라떼맛 (204g)', price: 4190, sales5m: 380000, color: '#db2777' },
-          { id: 'A02', name: '해태 미니자유시간 로얄밀크티 (300g)', price: 8990, sales5m: 450000, color: '#4f46e5' },
-          { id: 'A03', name: '해태 버터링 에스프레소 버터 (194g)', price: 5590, sales5m: 290000, color: '#0d9488' },
-          { id: 'A04', name: '해태 후렌치파이 딸기 (192g)', price: 3590, sales5m: 360000, color: '#e11d48' },
-          { id: 'A05', name: '해태 맛동산 벨기에화이트초코 (204g)', price: 3590, sales5m: 310000, color: '#9333ea' },
+          { ospCode: 'OS004', code: 'G01', name: '[남도화우] 한우 1등급 실속 정육세트', orderAmount: 4100000, orderQty: 41, totalSales: 3960000, netSales: 3500000, cancelQty: 1, color: '#7c3aed' },
+          { ospCode: 'OS005', code: 'G02', name: '[남도화우] 한우 1등급 등심 정육세트', orderAmount: 4850000, orderQty: 30, totalSales: 4770000, netSales: 4200000, cancelQty: 0, color: '#2563eb' }
         ]
       }
     ];
@@ -153,29 +168,16 @@
     function initChart() {
       const ctx = document.getElementById('salesChart').getContext('2d');
       chartInstance = new Chart(ctx, {
-        type: 'line',
-        data: { labels: ['10:30', '10:35', '10:40', '10:45'], datasets: [] },
+        type: 'bar',
+        data: { labels: [], datasets: [] },
         options: {
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            x: { 
-              grid: { color: '#f1f5f9' }, 
-              ticks: { color: '#64748b' } 
-            },
-            y: { 
-              grid: { color: '#f1f5f9' }, 
-              ticks: { 
-                color: '#64748b', 
-                callback: v => '₩' + Math.round(v/10000) + '만' 
-              } 
-            }
+            x: { grid: { display: false }, ticks: { color: '#64748b' } },
+            y: { grid: { color: '#f1f5f9' }, ticks: { color: '#64748b', callback: v => '₩' + (v/10000).toLocaleString() + '만' } }
           },
-          plugins: { 
-            legend: { 
-              labels: { color: '#334155', boxWidth: 12, font: { weight: 'bold' } } 
-            } 
-          }
+          plugins: { legend: { labels: { color: '#334155', boxWidth: 12 } } }
         }
       });
     }
@@ -184,21 +186,17 @@
       const container = document.getElementById('tab-container');
       container.innerHTML = SECTIONS.map(sec => {
         const isSel = sec.id === currentSecId;
-        const total = sec.products.reduce((a, b) => a + b.sales5m, 0);
+        const total = sec.products.reduce((a, b) => a + Number(b.totalSales || 0), 0);
         return `
           <button onclick="selectSection('${sec.id}')" class="p-4 rounded-2xl text-left border transition-all ${
-            isSel 
-              ? 'bg-red-50/40 border-red-500 shadow-sm ring-1 ring-red-500/30' 
-              : 'bg-white border-slate-200/90 hover:border-slate-300 shadow-sm'
+            isSel ? 'bg-red-50/40 border-red-500 shadow-sm ring-1 ring-red-500/30' : 'bg-white border-slate-200/90 hover:border-slate-300 shadow-sm'
           }">
             <div class="flex justify-between items-center text-xs">
-              <span class="font-bold px-2 py-0.5 rounded ${
-                isSel ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-600'
-              }">${sec.badge}</span>
+              <span class="font-bold px-2 py-0.5 rounded ${isSel ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-600'}">${sec.badge}</span>
               <span class="text-red-600 font-bold font-mono">₩ ${total.toLocaleString()}</span>
             </div>
             <div class="font-bold text-sm text-slate-900 mt-2.5 truncate">${sec.title}</div>
-            <div class="text-xs text-slate-500 mt-0.5">전시 상품 ${sec.products.length}개 추적 중</div>
+            <div class="text-xs text-slate-500 mt-0.5">매핑 상품 ${sec.products.length}개</div>
           </button>
         `;
       }).join('');
@@ -206,56 +204,46 @@
 
     function renderContent() {
       const sec = SECTIONS.find(s => s.id === currentSecId);
-      const total = sec.products.reduce((a, b) => a + b.sales5m, 0);
-      const sorted = [...sec.products].sort((a, b) => b.sales5m - a.sales5m);
+      const totalOrder = sec.products.reduce((a, b) => a + Number(b.orderAmount || 0), 0);
+      const totalSales = sec.products.reduce((a, b) => a + Number(b.totalSales || 0), 0);
+      const totalNet = sec.products.reduce((a, b) => a + Number(b.netSales || 0), 0);
+      const totalQty = sec.products.reduce((a, b) => a + Number(b.orderQty || 0), 0);
+
+      const sorted = [...sec.products].sort((a, b) => Number(b.totalSales) - Number(a.totalSales));
       const topP = sorted[0];
 
-      document.getElementById('kpi-total').textContent = '₩ ' + total.toLocaleString();
-      document.getElementById('kpi-top').textContent = topP.name;
-      document.getElementById('kpi-top-detail').textContent = `₩ ${topP.sales5m.toLocaleString()} (점유율 ${Math.round((topP.sales5m/total)*100)}%)`;
+      document.getElementById('kpi-order-amount').textContent = '₩ ' + totalOrder.toLocaleString();
+      document.getElementById('kpi-sales-amount').textContent = '₩ ' + totalSales.toLocaleString();
+      document.getElementById('kpi-sales-qty').textContent = `총 판매수량: ${totalQty.toLocaleString()}개`;
+      document.getElementById('kpi-top-name').textContent = topP ? topP.name : '-';
+      document.getElementById('kpi-top-desc').textContent = topP ? `₩ ${Number(topP.totalSales).toLocaleString()} (${Math.round((topP.totalSales/totalSales)*100 || 0)}%)` : '-';
+      document.getElementById('kpi-net-rate').textContent = totalSales > 0 ? `${Math.round((totalNet / totalSales) * 100)}%` : '0%';
       document.getElementById('table-title').textContent = `"${sec.title}" 노출 상품 기여도`;
 
-      // 차트 갱신
-      chartInstance.data.datasets = sec.products.slice(0, 3).map(p => ({
-        label: p.name.substring(0, 14),
-        data: [p.sales5m * 0.82, p.sales5m * 0.91, p.sales5m * 0.96, p.sales5m],
-        borderColor: p.color,
-        backgroundColor: p.color + '15',
-        fill: true,
-        tension: 0.35,
-        borderWidth: 2
-      }));
+      // 차트 업데이트 (주문금액 vs 총매출액)
+      chartInstance.data.labels = sec.products.map(p => p.name.substring(0, 12));
+      chartInstance.data.datasets = [
+        { label: '주문금액', data: sec.products.map(p => p.orderAmount), backgroundColor: '#cbd5e1', borderRadius: 6 },
+        { label: '실 총매출액', data: sec.products.map(p => p.totalSales), backgroundColor: '#dc2626', borderRadius: 6 }
+      ];
       chartInstance.update();
 
-      // 테이블 갱신
+      // 테이블 렌더링
       const tbody = document.getElementById('table-body');
-      tbody.innerHTML = sec.products.map((p, idx) => {
-        const share = Math.round((p.sales5m / total) * 100);
-        return `
-          <tr class="hover:bg-slate-50 transition-colors">
-            <td class="py-3 px-4 font-mono font-bold text-slate-500">#${idx + 1}</td>
-            <td class="py-3 px-4">
-              <div class="font-semibold text-slate-800">${p.name}</div>
-              <div class="text-[11px] text-slate-400 font-mono mt-0.5">코드: ${p.id}</div>
-            </td>
-            <td class="py-3 px-4 text-right font-mono text-slate-600">₩ ${p.price.toLocaleString()}</td>
-            <td class="py-3 px-4 text-right font-bold text-red-600 font-mono">₩ ${p.sales5m.toLocaleString()}</td>
-            <td class="py-3 px-4 text-right">
-              <div class="flex items-center justify-end gap-2">
-                <span class="font-mono text-slate-700 font-medium">${share}%</span>
-                <div class="w-16 bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                  <div class="bg-red-500 h-full rounded-full" style="width: ${share}%"></div>
-                </div>
-              </div>
-            </td>
-            <td class="py-3 px-4 text-center">
-              ${share >= 25 ? '<span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">효자 상품</span>' : 
-                share < 10 ? '<span class="px-2 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold">교체 검토</span>' : 
-                '<span class="text-slate-500 text-[11px]">안정적</span>'}
-            </td>
-          </tr>
-        `;
-      }).join('');
+      tbody.innerHTML = sec.products.map((p, idx) => `
+        <tr class="hover:bg-slate-50 transition-colors">
+          <td class="py-3 px-4 font-mono font-bold text-slate-500">#${idx + 1}</td>
+          <td class="py-3 px-4">
+            <div class="font-semibold text-slate-800">${p.name}</div>
+            <div class="text-[11px] text-slate-400 font-mono mt-0.5">코드: ${p.code} (OSP: ${p.ospCode || '-'})</div>
+          </td>
+          <td class="py-3 px-4 text-right font-mono text-slate-600">₩ ${Number(p.orderAmount).toLocaleString()}</td>
+          <td class="py-3 px-4 text-right font-mono text-slate-600">${p.orderQty}개</td>
+          <td class="py-3 px-4 text-right font-bold text-red-600 font-mono">₩ ${Number(p.totalSales).toLocaleString()}</td>
+          <td class="py-3 px-4 text-right font-mono text-slate-700 font-semibold">₩ ${Number(p.netSales).toLocaleString()}</td>
+          <td class="py-3 px-4 text-center font-mono text-slate-500">${p.cancelQty || 0}</td>
+        </tr>
+      `).join('');
     }
 
     window.selectSection = function(id) {
@@ -264,24 +252,64 @@
       renderContent();
     };
 
+    // 엑셀 파싱 핸들러
+    document.getElementById('excel-input').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+        // 백오피스 엑셀 2단 헤더 파싱 (row 1부터 데이터 행)
+        const parsedProducts = [];
+        for (let i = 2; i < json.length; i++) {
+          const row = json[i];
+          if (!row || row[0] === '총계' || !row[11]) continue; // 총계나 빈 행 제외
+
+          parsedProducts.push({
+            ospCode: row[8] || '',
+            code: row[10] || '',
+            name: row[11] || '',
+            orderAmount: Number(row[15]) || 0,
+            orderQty: Number(row[17]) || 0,
+            cancelQty: Number(row[20]) || 0,
+            totalSales: Number(row[21]) || 0,
+            netSales: Number(row[22]) || 0,
+            color: '#dc2626'
+          });
+        }
+
+        if (parsedProducts.length > 0) {
+          // 백오피스 업로드 데이터로 1번 탭 교체
+          SECTIONS[0] = {
+            id: 'SEC_BO_UPLOAD',
+            title: `BO 엑셀 실제 매출 반영 (${file.name.substring(0, 20)}...)`,
+            badge: '실제 BO 데이터',
+            products: parsedProducts
+          };
+          currentSecId = SECTIONS[0].id;
+
+          // 상태 배지 변경
+          const badge = document.getElementById('data-status-badge');
+          badge.textContent = '실데이터 연동 완료';
+          badge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200';
+
+          renderTabs();
+          renderContent();
+          alert(`엑셀 파일에서 ${parsedProducts.length}개의 상품 실매출 데이터를 성공적으로 추출하여 반영했습니다!`);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    });
+
     window.onload = function() {
       initChart();
       renderTabs();
       renderContent();
-
-      // 실시간 시뮬레이션 인터벌
-      setInterval(() => {
-        const now = new Date();
-        document.getElementById('timer-display').textContent = now.toTimeString().split(' ')[0];
-        SECTIONS.forEach(s => {
-          s.products.forEach(p => {
-            const inc = Math.floor(Math.random() * 2);
-            p.sales5m = Math.max(100000, p.sales5m + (inc * p.price));
-          });
-        });
-        renderTabs();
-        renderContent();
-      }, 3500);
     };
   </script>
 </body>
