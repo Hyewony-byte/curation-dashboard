@@ -306,11 +306,32 @@
       reader.readAsArrayBuffer(file);
     });
 
-    window.onload = function() {
-      initChart();
+   // [교체할 코드]
+window.onload = function() {
+  initChart();
+
+  // GitHub Actions가 자동 생성한 최신 products.json 파일 읽어오기
+  fetch('./products.json?t=' + Date.now())
+    .then(res => res.json())
+    .then(data => {
+      if (data.sections && data.sections.length > 0) {
+        SECTIONS = data.sections;
+        currentSecId = SECTIONS[0].id;
+        document.getElementById('target-date').textContent = '자동 크롤링 반영 완료';
+        
+        const badge = document.getElementById('data-status-badge');
+        badge.textContent = '실시간 전시 매핑';
+        badge.className = 'text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200';
+      }
       renderTabs();
       renderContent();
-    };
+    })
+    .catch(err => {
+      console.warn('products.json 로드 실패, 기본값으로 표시합니다:', err);
+      renderTabs();
+      renderContent();
+    });
+};
   </script>
 </body>
 </html>
