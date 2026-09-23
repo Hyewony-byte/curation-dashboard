@@ -1,10 +1,11 @@
 name: Auto Crawl Zetta Main Products
 
 on:
-  schedule:
-    # 매 2시간마다 자동 실행 (UTC 기준)
-    - cron: '0 */2 * * *'
-  # GitHub 화면에서 수동으로 [Run workflow] 버튼을 눌러 즉시 실행 가능
+  # [크롤링 일시정지] 자동 주기 실행(schedule/cron) 비활성화
+  # schedule:
+  #   - cron: '0 */2 * * *'
+  
+  # 필요할 때만 GitHub 화면에서 수동으로 [Run workflow]를 눌러 테스트하는 모드로 유지
   workflow_dispatch:
 
 jobs:
@@ -12,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write  # products.json 자동 커밋 권한
+      contents: write
 
     steps:
       - name: Checkout repository
